@@ -5,3 +5,17 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
+
+[project.optional-dependencies]
+prompt-enhancing = [
+    "accelerate",
+    "torch",
+    "transformers>=4.56.0,<5",
+    "huggingface-hub",
+    "qwen-vl-utils",
+    "datasets>=2.14.0",
+    "google-genai>=0.3.0",
+    "requests>=2.28.0",
+    "tiktoken",
+    "tqdm>=4.64.0",
+]

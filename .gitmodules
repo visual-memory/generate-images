@@ -1,0 +1,3 @@
+[submodule "3rdparty/PromptEnhancer"]
+	path = 3rdparty/PromptEnhancer
+	url = https://github.com/Hunyuan-PromptEnhancer/PromptEnhancer.git
