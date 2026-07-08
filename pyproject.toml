@@ -10,6 +10,7 @@ dependencies = []
 prompt-enhancing = [
     "accelerate",
     "torch",
+    "torchvision",
     "transformers>=4.56.0,<5",
     "huggingface-hub",
     "qwen-vl-utils",
@@ -19,3 +20,11 @@ prompt-enhancing = [
     "tiktoken",
     "tqdm>=4.64.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

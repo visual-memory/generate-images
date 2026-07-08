@@ -1,4 +1,8 @@
 git submodule update --init --recursive
 hf download tencent/HunyuanImage-2.1 --include "reprompt/*" --local-dir /raid/aluno_paulosantana/models/promptenhancer-7b
+hf download PromptEnhancer/PromptEnhancer-32B --local-dir /raid/aluno_paulosantana/models/promptenhancer-32b
 uv sync --extra prompt-enhancing
-CUDA_VISIBLE_DEVICES=1 python main.py
+source .venv/bin/activate
+
+PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run --gpus 0,1 --push-pr
+screen -L -Logfile screen.log -dmS enhance_shards bash -lc 'PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run --gpus 2,2,2,2,3,3,3,3 --push-pr'
