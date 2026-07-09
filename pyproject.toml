@@ -7,6 +7,13 @@ requires-python = ">=3.12"
 dependencies = []
 
 [project.optional-dependencies]
+image-generation = [
+    "datasets>=2.14.0",
+    "image-generator[huggingface] @ git+https://github.com/paulovsantanas/image-generator.git",
+    "pillow>=10.0.0",
+    "tqdm>=4.64.0",
+    "torch",
+]
 prompt-enhancing = [
     "accelerate",
     "torch",
