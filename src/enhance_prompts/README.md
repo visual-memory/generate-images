@@ -1,113 +1,157 @@
 # enhance_prompts
 
-Scripts for enhancing the `description` column from
-`visual-memory/Synthetic-Persona-Chat-Mapping` with the vendored
-PromptEnhancer code under `3rdparty/PromptEnhancer`.
+Executa o PromptEnhancer vendorizado em `3rdparty/PromptEnhancer` sobre uma
+coluna textual de um dataset do Hugging Face. Dataset, split, colunas, template,
+backend e parâmetros de geração são configuráveis no módulo; opções de execução
+como GPUs, caminhos e limite de registros são parametrizadas pela CLI.
 
-The module keeps PromptEnhancer usage intentionally thin: it imports the vendor
-classes the same way `main.py` does and calls `predict(...)`. It does not modify
-or reimplement the vendor model code.
+O pacote apenas adapta a interface do projeto vendorizado e não altera nem
+reimplementa o código do modelo.
 
-## Scripts
+## Estrutura
 
-### `enhance_dataset.py`
+- `enhance_dataset_shards.py`: CLI que distribui o dataset entre processos/GPU,
+  mantém checkpoints e reúne os shards no dataset final.
+- `vendor_prompt_enhancer.py`: adaptador para os backends `7b` e `v2` do
+  PromptEnhancer vendorizado.
+- `utils.py`: configuração de geração, montagem e limpeza de prompts e leitura
+  e escrita dos checkpoints JSONL.
 
-Single-process runner. Use this when one process/GPU is enough:
+## Preparação
 
-```bash
-PYTHONPATH=src CUDA_VISIBLE_DEVICES=0 uv run python -m enhance_prompts.enhance_dataset
-```
-
-Open a Hugging Face Hub pull request after processing:
-
-```bash
-PYTHONPATH=src CUDA_VISIBLE_DEVICES=0 uv run python -m enhance_prompts.enhance_dataset --push-pr
-```
-
-Smoke test with only a few rows:
+Inicialize o submódulo, instale as dependências e baixe o modelo de reprompt:
 
 ```bash
-PYTHONPATH=src CUDA_VISIBLE_DEVICES=0 uv run python -m enhance_prompts.enhance_dataset --limit 10 --force
+git submodule update --init --recursive
+uv sync --extra prompt-enhancing
+hf download tencent/HunyuanImage-2.1 \
+  --include "reprompt/*" \
+  --local-dir /raid/aluno_paulosantana/models/promptenhancer-7b
 ```
 
-### `enhance_dataset_shards.py`
+O caminho padrão esperado pelo script é:
 
-Multi-process runner. This is the recommended path for throughput. Pass one GPU
-id per process; repeated ids are allowed when the GPU has enough VRAM:
+```text
+/raid/aluno_paulosantana/models/promptenhancer-7b/reprompt
+```
+
+Use `--model-path` caso o modelo esteja em outro local.
+
+## Execução
+
+O comando recomendado recebe um identificador por processo. Identificadores
+repetidos iniciam vários processos na mesma GPU e só devem ser usados quando
+houver VRAM suficiente:
 
 ```bash
 PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run --gpus 0,1
 PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run --gpus 0,0,0,0
 ```
 
-The `run` command:
-
-1. creates one shard per GPU id;
-2. launches one subprocess per shard with `CUDA_VISIBLE_DEVICES` set;
-3. waits for all shards to finish;
-4. merges checkpoints back into the original row order;
-5. writes the final dataset and optional PR.
-
-Smoke test:
+Para uma única GPU/processo:
 
 ```bash
-PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run --gpus 0,1 --limit 10 --force
+PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run --gpus 0
 ```
 
-Production run with PR:
+O comando `run`:
+
+1. cria um shard para cada item informado em `--gpus`;
+2. inicia um subprocesso por shard com `CUDA_VISIBLE_DEVICES` configurado;
+3. aguarda todos os subprocessos;
+4. reúne os checkpoints na ordem original do dataset;
+5. salva o dataset final e, opcionalmente, abre um pull request no Hub.
+
+Teste rápido com poucas linhas, descartando checkpoints anteriores do mesmo
+número de shards:
 
 ```bash
-PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run --gpus 0,1 --push-pr
+PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run \
+  --gpus 0,1 --limit 10 --force
 ```
 
-Manual subcommands also exist for debugging:
+Execução com abertura de pull request no Hugging Face Hub:
 
 ```bash
-PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run-shard --num-shards 2 --shard-index 0
-PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards merge --num-shards 2
+PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run \
+  --gpus 0,1 --push-pr
 ```
 
-## Static Configuration
+## Comandos manuais
 
-Most behavior is intentionally static at the top of `enhance_dataset.py`:
+Os subcomandos abaixo permitem executar e reunir shards separadamente, o que é
+útil para depuração ou retomada manual:
 
-- dataset id: `visual-memory/Synthetic-Persona-Chat-Mapping`
-- split: `train`
-- input column: `description`
-- output column: `enhanced_description`
-- backend: `7b`
-- model path: `/raid/aluno_paulosantana/models/promptenhancer-7b/reprompt`
-- prompt template:
+```bash
+PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run-shard \
+  --num-shards 2 --shard-index 0
+
+PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards merge \
+  --num-shards 2
+```
+
+Em `run-shard`, `--device` é repassado somente ao backend `v2`. O fluxo padrão
+usa o backend `7b` e seleciona a GPU por meio de `CUDA_VISIBLE_DEVICES`.
+
+## Parametrização
+
+Há dois níveis de configuração.
+
+### Dataset e geração
+
+Os parâmetros que definem o conteúdo processado ficam nas constantes no início
+de `enhance_dataset_shards.py`. Para adaptar o fluxo a outro dataset, configure:
+
+- `DEFAULT_DATASET_ID`: identificador do dataset no Hugging Face Hub;
+- `DEFAULT_SPLIT`: split que será processado;
+- `DEFAULT_DESCRIPTION_COLUMN`: coluna textual usada como entrada;
+- `DEFAULT_ENHANCED_COLUMN`: nome da nova coluna que receberá o resultado;
+- `DEFAULT_TEMPLATE`: template do prompt, obrigatoriamente com o marcador
+  `{description}`;
+- `DEFAULT_BACKEND`: backend do PromptEnhancer (`7b` ou `v2`);
+- `DEFAULT_DEVICE_MAP`: estratégia de alocação do modelo;
+- `DEFAULT_TEMPERATURE`, `DEFAULT_TOP_P`, `DEFAULT_MAX_NEW_TOKENS` e
+  `DEFAULT_SYS_PROMPT`: parâmetros de geração;
+- `DEFAULT_CHECKPOINT_INTERVAL`: quantidade de amostras entre gravações do
+  checkpoint;
+- `DEFAULT_TARGET_REPO_ID`: repositório de destino usado com `--push-pr`;
+- `DEFAULT_COMMIT_MESSAGE` e `DEFAULT_COMMIT_DESCRIPTION`: metadados do pull
+  request no Hub.
+
+Por exemplo, para processar a coluna `caption` e gravar o resultado em
+`enhanced_caption`, ajuste as constantes desta forma:
+
+```python
+DEFAULT_DATASET_ID = "organizacao/meu-dataset"
+DEFAULT_SPLIT = "train"
+DEFAULT_DESCRIPTION_COLUMN = "caption"
+DEFAULT_ENHANCED_COLUMN = "enhanced_caption"
+DEFAULT_TEMPLATE = "Enhance this image description:\n{description}"
+DEFAULT_TARGET_REPO_ID = "organizacao/meu-dataset-enriquecido"
+```
+
+O valor da coluna de entrada é inserido em `{description}`. Um template possível
+é:
 
 ```text
-Generate a photo of a person with the following self-description:
+Enhance the following image description:
 {description}
 ```
 
-Generation defaults are deterministic:
+A saída do modelo é normalizada antes de ser salva: tags `answer` e `think`, o
+conteúdo de blocos `think`, caracteres CJK e espaços repetidos são removidos.
+Se o modelo falhar em uma linha, o prompt de entrada é usado como fallback.
 
-- `temperature = 0.0`
-- `top_p = 0.9`
-- `max_new_tokens = 256`
+### Parâmetros operacionais da CLI
 
-## CLI Arguments
+Esses argumentos permitem variar a execução sem editar o módulo. Em especial,
+`--model-path`, `--output-dir`, `--final-output-dir` e `--target-repo-id`
+sobrescrevem seus respectivos valores padrão quando disponíveis no subcomando.
 
-The single-process script exposes only operational arguments:
-
-```text
---model-path
---device
---limit
---output-dir
---target-repo-id
---push-pr
---force
-```
-
-The sharded `run` command exposes:
+`run` aceita:
 
 ```text
---gpus
+--gpus (obrigatório)
 --model-path
 --limit
 --output-dir
@@ -117,58 +161,65 @@ The sharded `run` command exposes:
 --force
 ```
 
-`--force` removes the current checkpoint for the selected output path before
-processing. Use it after changing generation settings or when rerunning smoke
-tests from scratch.
+`run-shard` aceita:
 
-## Checkpoints And Outputs
+```text
+--num-shards (obrigatório)
+--shard-index (obrigatório)
+--model-path
+--device
+--limit
+--output-dir
+--force
+```
 
-Checkpoints are JSONL files containing original row indices:
+`merge` aceita:
+
+```text
+--num-shards (obrigatório)
+--limit
+--output-dir
+--final-output-dir
+--target-repo-id
+--push-pr
+```
+
+`--force` remove somente o checkpoint do shard que será executado. No comando
+`run`, a opção é propagada para todos os shards iniciados.
+
+## Checkpoints e saídas
+
+Cada checkpoint é um arquivo JSONL que preserva o índice da linha original:
 
 ```json
 {"row_index": 123, "enhanced_description": "..."}
 ```
 
-They are flushed every 100 completed samples and once more at process exit for
-the remaining buffered samples. If a process stops unexpectedly, it may lose up
-to 99 completed samples from that process since the previous flush.
+Com o valor padrão de `DEFAULT_CHECKPOINT_INTERVAL`, os registros são gravados a
+cada 50 amostras concluídas e novamente ao final do processo. Uma interrupção
+inesperada pode, portanto, exigir o reprocessamento de até 49 linhas por
+processo. Esse comportamento acompanha o intervalo configurado.
 
-Single-process checkpoints are stored under:
-
-```text
-outputs/enhanced-dataset/enhanced_description.jsonl
-```
-
-Sharded checkpoints are stored under:
+Por padrão, os checkpoints ficam em:
 
 ```text
 outputs/enhanced-dataset-shards/num_shards-N/shard-XXXXX/enhanced_description.jsonl
 ```
 
-The final merged dataset is written to:
+O resultado reunido é salvo em:
 
 ```text
 outputs/enhanced-dataset/dataset
-outputs/enhanced-dataset/train.parquet
+outputs/enhanced-dataset/<split>.parquet
 ```
 
-## Ordering
+O merge exige o checkpoint de todos os shards e todas as linhas esperadas. A
+coluna final é reconstruída por `row_index`, preservando a ordem do dataset de
+origem.
 
-The final dataset preserves the original dataset order. Each shard writes the
-original `row_index`; merge reconstructs:
-
-```python
-enhanced_values = [enhanced[index] for index in range(len(dataset))]
-```
-
-Merge fails if any expected row is missing.
-
-## Testing
-
-Run:
+## Verificação
 
 ```bash
 uv run pytest
 uv run python -m compileall src tests
 ```
-

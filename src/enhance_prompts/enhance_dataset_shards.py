@@ -10,30 +10,31 @@ from pathlib import Path
 from datasets import DatasetDict, load_dataset
 from tqdm.auto import tqdm
 
-from enhance_prompts.enhance_dataset import (
-    DEFAULT_BACKEND,
-    DEFAULT_CHECKPOINT_NAME,
-    DEFAULT_CHECKPOINT_INTERVAL,
-    DEFAULT_COMMIT_DESCRIPTION,
-    DEFAULT_COMMIT_MESSAGE,
-    DEFAULT_DATASET_ID,
-    DEFAULT_DESCRIPTION_COLUMN,
-    DEFAULT_DEVICE_MAP,
-    DEFAULT_ENHANCED_COLUMN,
-    DEFAULT_MAX_NEW_TOKENS,
-    DEFAULT_MODEL_PATH,
-    DEFAULT_OUTPUT_DIR,
-    DEFAULT_SPLIT,
-    DEFAULT_SYS_PROMPT,
-    DEFAULT_TARGET_REPO_ID,
-    DEFAULT_TEMPLATE,
-    DEFAULT_TEMPERATURE,
-    DEFAULT_TOP_P,
-    GenerationConfig,
-    VendorPromptEnhancer,
-    append_checkpoint,
-    build_prompt,
-    load_checkpoint,
+from enhance_prompts.utils import GenerationConfig, append_checkpoint, build_prompt, load_checkpoint
+from enhance_prompts.vendor_prompt_enhancer import Backend, VendorPromptEnhancer
+
+DEFAULT_DATASET_ID = "visual-memory/PersonaChat-Mapping"
+DEFAULT_MODEL_PATH = "/raid/aluno_paulosantana/models/promptenhancer-7b/reprompt"
+DEFAULT_TARGET_REPO_ID = DEFAULT_DATASET_ID
+DEFAULT_SPLIT = "train"
+DEFAULT_DESCRIPTION_COLUMN = "persona_revised"
+DEFAULT_ENHANCED_COLUMN = "enhanced_persona_revised"
+DEFAULT_BACKEND: Backend = "7b"
+DEFAULT_DEVICE_MAP = "auto"
+DEFAULT_MAX_NEW_TOKENS = 256
+DEFAULT_TEMPERATURE = 0.0
+DEFAULT_TOP_P = 0.9
+DEFAULT_SYS_PROMPT = None
+DEFAULT_OUTPUT_DIR = Path("outputs/enhanced-dataset")
+DEFAULT_CHECKPOINT_NAME = "enhanced_description.jsonl"
+DEFAULT_CHECKPOINT_INTERVAL = 50
+DEFAULT_COMMIT_MESSAGE = "Add enhanced persona descriptions"
+DEFAULT_COMMIT_DESCRIPTION = (
+    "Adds enhanced_description generated from description with PromptEnhancer."
+)
+DEFAULT_TEMPLATE = (
+    "Generate a photo of a person with the following self-description:\n"
+    "{description}"
 )
 
 SHARDED_OUTPUT_DIR = DEFAULT_OUTPUT_DIR.with_name(f"{DEFAULT_OUTPUT_DIR.name}-shards")
