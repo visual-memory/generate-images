@@ -11,19 +11,22 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-SOURCE_DATASET = "visual-memory/Synthetic-Persona-Chat-Mapping"
-TARGET_DATASET = "visual-memory/Synthetic-Persona-Chat-Qwen-Image-2512"
-MODEL_NAME = "Qwen/Qwen-Image-2512"
+SOURCE_DATASET = "visual-memory/Synthetic-Persona-Chat-Mapping_10"
+TARGET_DATASET = SOURCE_DATASET + "-FLUX-enhanced"
+# MODEL_NAME = "Qwen/Qwen-Image-2512"
+MODEL_NAME = "black-forest-labs/FLUX.2-dev"
 DEFAULT_SPLIT = "train"
 PERSONA_ID_COLUMN = "persona-id"
 PROMPT_COLUMN = "enhanced_description"
 IMAGE_COLUMN = "persona-image"
 GENERATION_PARAMS = {"width": 1024, "height": 1024}
+
+BASE_OUTPUT_DIR = Path("/raid/aluno_paulosantana/generate_images_outputs")
 DEFAULT_OUTPUT_DIR = Path(
-    "/raid/aluno_paulosantana/generate_images_outputs/persona-images-shards"
+    BASE_OUTPUT_DIR / TARGET_DATASET / "persona-images-shards"
 )
 DEFAULT_FINAL_OUTPUT_DIR = Path(
-    "/raid/aluno_paulosantana/generate_images_outputs/persona-images"
+    BASE_OUTPUT_DIR / TARGET_DATASET / "persona-images"
 )
 DEFAULT_CHECKPOINT_NAME = "persona_images.jsonl"
 
