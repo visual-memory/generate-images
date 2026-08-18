@@ -13,8 +13,11 @@ image-generation = [
     "datasets>=2.14.0",
     "image-generator[huggingface] @ git+https://github.com/paulovsantanas/image-generator.git",
     "pillow>=10.0.0",
+    "pyyaml>=6.0.0",
     "tqdm>=4.64.0",
     "torch",
+    "vllm==0.26.0",
+    "vllm-omni==0.26.0",
 ]
 prompt-enhancing = [
     "accelerate",
@@ -53,3 +56,7 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13"]
+build-backend = "uv_build"

@@ -1,0 +1,43 @@
+output_root: /raid/aluno_paulosantana/generate_images_outputs
+split: train
+persona_id_column: persona-id
+image_column: persona-image
+
+generation_params:
+  width: 1024
+  height: 1024
+  seed: 42
+
+datasets:
+  synthetic-persona-chat:
+    repo_id: visual-memory/Synthetic-Persona-Chat-Mapping_1k
+    columns:
+      original: description
+      enhanced: enhanced_description
+
+  persona-chat:
+    repo_id: visual-memory/PersonaChat-Mapping_1k
+    columns:
+      original: persona_revised
+      enhanced: enhanced_persona_revised
+
+  convai2:
+    repo_id: visual-memory/ConvAI2-Mapping_1k
+    columns:
+      original: persona_revised
+      enhanced: enhanced_persona_revised
+
+models:
+  qwen:
+    repo_id: Qwen/Qwen-Image-2512
+    dataset_suffix: Qwen
+
+  flux:
+    repo_id: black-forest-labs/FLUX.2-dev
+    dataset_suffix: FLUX
+
+  ernie:
+    repo_id: baidu/ERNIE-Image
+    dataset_suffix: ERNIE
+    generation_params:
+      apply_pe: false
