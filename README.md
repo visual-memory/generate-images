@@ -7,8 +7,8 @@ source .venv/bin/activate
 PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run --gpus 0,1 --push-pr
 
 enhance prompt
-screen -L -Logfile screen.log -dmS enhance_shards bash -lc 'PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run --gpus 2,2,2,2,3,3,3,3 --push-pr'
+screen -L -Logfile screen.log -dmS enhance_shards bash -lc 'PYTHONPATH=src uv run python -m enhance_prompts.enhance_dataset_shards run --gpus 0,1 --push-pr'
 
 gen images
-screen -L -Logfile gen.log -dmS gen_shards bash -lc 'PYTHONPATH=src uv run python -m generate_images.generate_persona_images_shards run --gpus 2,3 --push-pr'
-screen -L -Logfile gen_2.log -dmS gen_shards_2 bash -lc 'PYTHONPATH=src uv run python -m generate_images.generate_persona_images_shards run --gpus 0 --push-pr'
+screen -L -Logfile gen.log -dmS gen_shards bash -lc 'PYTHONPATH=src uv run python -m generate_images.generate_persona_images_shards run --gpus 0 --push-pr'
+screen -L -Logfile gen_2.log -dmS gen_shards_2 bash -lc 'PYTHONPATH=src uv run python -m generate_images.generate_persona_images_shards run --gpus 3 --push-pr'

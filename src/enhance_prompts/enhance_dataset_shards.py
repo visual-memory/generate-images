@@ -13,7 +13,7 @@ from tqdm.auto import tqdm
 from enhance_prompts.utils import GenerationConfig, append_checkpoint, build_prompt, load_checkpoint
 from enhance_prompts.vendor_prompt_enhancer import Backend, VendorPromptEnhancer
 
-DEFAULT_DATASET_ID = "visual-memory/PersonaChat-Mapping"
+DEFAULT_DATASET_ID = "visual-memory/ConvAI2-Mapping"
 DEFAULT_MODEL_PATH = "/raid/aluno_paulosantana/models/promptenhancer-7b/reprompt"
 DEFAULT_TARGET_REPO_ID = DEFAULT_DATASET_ID
 DEFAULT_SPLIT = "train"

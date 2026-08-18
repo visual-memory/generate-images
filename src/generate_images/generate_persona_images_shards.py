@@ -11,13 +11,16 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-SOURCE_DATASET = "visual-memory/Synthetic-Persona-Chat-Mapping_10"
-TARGET_DATASET = SOURCE_DATASET + "-FLUX-enhanced"
+# SOURCE_DATASET = "visual-memory/Synthetic-Persona-Chat-Mapping_10"
+# SOURCE_DATASET = "visual-memory/PersonaChat-Mapping_10"
+SOURCE_DATASET = "visual-memory/ConvAI2-Mapping_10"
+TARGET_DATASET = SOURCE_DATASET + "-ERNIE-enhanced"
 # MODEL_NAME = "Qwen/Qwen-Image-2512"
-MODEL_NAME = "black-forest-labs/FLUX.2-dev"
+# MODEL_NAME = "black-forest-labs/FLUX.2-dev"
+MODEL_NAME = "baidu/ERNIE-Image"
 DEFAULT_SPLIT = "train"
 PERSONA_ID_COLUMN = "persona-id"
-PROMPT_COLUMN = "enhanced_description"
+PROMPT_COLUMN = "enhanced_persona_revised"
 IMAGE_COLUMN = "persona-image"
 GENERATION_PARAMS = {"width": 1024, "height": 1024}
 

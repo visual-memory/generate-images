@@ -30,6 +30,22 @@ prompt-enhancing = [
     "tqdm>=4.64.0",
 ]
 
+transformers5 = [
+    "transformers>=5,<6",
+]
+
+[tool.uv]
+conflicts = [
+    [
+        { extra = "image-generation" },
+        { extra = "prompt-enhancing" },
+    ],
+    [
+        { extra = "transformers5" },
+        { extra = "prompt-enhancing" },
+    ],
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
