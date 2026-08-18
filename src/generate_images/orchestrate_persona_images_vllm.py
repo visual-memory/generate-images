@@ -12,6 +12,7 @@ from typing import Any
 
 DEFAULT_CONFIG_PATH = Path(__file__).with_name("persona_image_generation.yaml")
 CHECKPOINT_NAME = "persona_images.jsonl"
+MAX_JOB_ATTEMPTS = 3
 ORIGINAL_PROMPT_PREFIX = "Generate an image of this person's description:"
 VARIANTS = ("original", "enhanced")
 
@@ -211,6 +212,7 @@ def create_omni(model_config: dict[str, Any], replica_count: int):
                 "engine_args": {
                     "model_stage": "diffusion",
                     "max_num_seqs": 1,
+                    "step_execution": True,
                     "parallel_config": {"tensor_parallel_size": 1},
                 },
                 "engine_input_source": [],
@@ -303,9 +305,9 @@ def generate_job(
 ):
     from tqdm.auto import tqdm
 
-    dataset = load_dataset_for_job(job, limit)
     if force and job.output_dir.exists():
         shutil.rmtree(job.output_dir)
+    dataset = load_dataset_for_job(job, limit)
 
     images_dir = job.output_dir / "images"
     checkpoint_path = job.output_dir / CHECKPOINT_NAME
@@ -394,23 +396,65 @@ def run_model(
 
     omni = None
     try:
-        omni = create_omni(model_config, replica_count)
-    except Exception:
-        logging.exception("Could not initialize model %s", model_config["repo_id"])
-        return [job.target_dataset for job in jobs]
+        for job in jobs:
+            enriched = None
+            first_generation_attempt = True
 
-    try:
-        for job_index, job in enumerate(jobs):
-            logging.info("Starting %s", job.target_dataset)
-            try:
-                enriched = generate_job(
-                    omni,
-                    job,
-                    replica_count,
-                    args.limit,
-                    args.force,
+            for attempt in range(1, MAX_JOB_ATTEMPTS + 1):
+                if omni is None:
+                    try:
+                        omni = create_omni(model_config, replica_count)
+                    except Exception:
+                        logging.exception(
+                            "Could not initialize model %s (attempt %d/%d)",
+                            model_config["repo_id"],
+                            attempt,
+                            MAX_JOB_ATTEMPTS,
+                        )
+                        continue
+
+                logging.info(
+                    "Starting %s (attempt %d/%d)",
+                    job.target_dataset,
+                    attempt,
+                    MAX_JOB_ATTEMPTS,
                 )
-                if args.push_pr:
+                force = args.force and first_generation_attempt
+                first_generation_attempt = False
+
+                try:
+                    enriched = generate_job(
+                        omni,
+                        job,
+                        replica_count,
+                        args.limit,
+                        force,
+                    )
+                    break
+                except Exception:
+                    logging.exception(
+                        "Generation attempt failed for %s (attempt %d/%d)",
+                        job.target_dataset,
+                        attempt,
+                        MAX_JOB_ATTEMPTS,
+                    )
+                try:
+                    omni.close()
+                except Exception:
+                    logging.exception("Could not close model %s", job.model_name)
+                omni = None
+
+            if enriched is None:
+                failures.append(job.target_dataset)
+                logging.error(
+                    "Generation failed for %s after %d attempts",
+                    job.target_dataset,
+                    MAX_JOB_ATTEMPTS,
+                )
+                continue
+
+            if args.push_pr:
+                try:
                     enriched.push_to_hub(
                         job.target_dataset,
                         commit_message="Add generated persona images",
@@ -424,26 +468,12 @@ def run_model(
                         "Opened a Hugging Face Hub PR for %s",
                         job.target_dataset,
                     )
-            except Exception:
-                failures.append(job.target_dataset)
-                logging.exception("Generation failed for %s", job.target_dataset)
-                try:
-                    omni.close()
                 except Exception:
-                    logging.exception("Could not close model %s", job.model_name)
-                omni = None
-                if job_index == len(jobs) - 1:
-                    break
-                try:
-                    omni = create_omni(model_config, replica_count)
-                except Exception:
-                    remaining_jobs = jobs[job_index + 1 :]
-                    failures.extend(job.target_dataset for job in remaining_jobs)
+                    failures.append(job.target_dataset)
                     logging.exception(
-                        "Could not reload model %s",
-                        model_config["repo_id"],
+                        "Could not push %s to the Hugging Face Hub",
+                        job.target_dataset,
                     )
-                    break
     finally:
         if omni is not None:
             try:
