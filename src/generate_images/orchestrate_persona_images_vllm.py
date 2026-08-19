@@ -212,7 +212,6 @@ def create_omni(model_config: dict[str, Any], replica_count: int):
                 "engine_args": {
                     "model_stage": "diffusion",
                     "max_num_seqs": 1,
-                    "step_execution": True,
                     "parallel_config": {"tensor_parallel_size": 1},
                 },
                 "engine_input_source": [],
