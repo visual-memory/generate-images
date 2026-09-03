@@ -37,9 +37,11 @@ específicos do ambiente em que o projeto foi desenvolvido.
 ```text
 .
 ├── main.py                                  # experimento direto com PromptEnhancer V2
-├── add_images_by_id.py                      # associa imagens a mappings por persona-id
-├── validate_persona_mapping_coverage.py     # verifica cobertura de IDs no Hub
 ├── src/
+│   ├── misc/
+│   │   ├── add_images_by_id.py              # associa imagens a mappings por persona-id
+│   │   ├── merge_redundant_personas.py      # mescla personas repetidas e republica
+│   │   └── validate_persona_mapping_coverage.py  # cobertura de IDs no Hub
 │   ├── enhance_prompts/
 │   │   ├── enhance_dataset_shards.py        # pipeline multi-GPU de prompts
 │   │   ├── utils.py                         # prompts, limpeza e checkpoints
@@ -286,6 +288,30 @@ uv run python validate_persona_mapping_coverage.py --max-missing 20
 O script é somente leitura e verifica pares hardcoded de Synthetic Persona
 Chat, PersonaChat e ConvAI2 no Hugging Face Hub. Ele termina com código `1` se
 algum ID referenciado não existir no mapping correspondente.
+
+### Mesclar personas redundantes
+
+Os mappings contêm personas repetidas: a mesma persona aparece com vários
+`persona-id`, variando apenas a ordem das frases, contrações, caixa ou
+pontuação. `src/misc/merge_redundant_personas.py` reduz cada grupo à sua
+primeira ocorrência e publica tudo com o sufixo `-no-redundancy`:
+
+```bash
+PYTHONPATH=src uv run python src/misc/merge_redundant_personas.py --dry-run
+PYTHONPATH=src uv run python src/misc/merge_redundant_personas.py --datasets convai2
+```
+
+Por família de dataset ele publica 8 repositórios — o mapping, os seis
+derivados com imagens (descobertos a partir de
+`configs/persona_image_generation.yaml`) e o dataset de diálogos. Nos mappings e
+derivados as linhas redundantes somem e a coluna `merged-persona-ids` registra
+os IDs de cada grupo; nos datasets de diálogos nenhuma linha é removida, apenas
+as colunas de ID passam a apontar para o ID mantido.
+
+O que se perde: `enhanced_*` e `persona-image` são os da linha mantida, e a
+dedup do PersonaChat usa `persona_revised` (35 grupos têm `persona_original`
+divergente). `--dry-run` reporta essas divergências e não baixa os datasets com
+imagens; `--datasets`/`--models` permitem retomar a execução, que move ~100 GB.
 
 ## Testes e estado conhecido
 
